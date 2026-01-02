@@ -11,7 +11,8 @@
   "dependencies": {
     "firebase": "^10.12.2",
     "firebase-admin": "^12.5.0",
-    "vue": "^3.4.27"
+    "vue": "^3.4.27",
+    "vue-router": "^4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
