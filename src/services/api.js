@@ -22,6 +22,19 @@ export const createApi = (userRef) => {
 
   return {
     getTrips: () => request("/api/trips"),
+    getCatalog: () => request("/api/catalog"),
+    createCatalog: (payload) =>
+      request("/api/catalog", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    updateCatalog: (catalogId, payload) =>
+      request(`/api/catalog/${catalogId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    deleteCatalog: (catalogId) =>
+      request(`/api/catalog/${catalogId}`, { method: "DELETE" }),
     createTrip: (payload) =>
       request("/api/trips", {
         method: "POST",

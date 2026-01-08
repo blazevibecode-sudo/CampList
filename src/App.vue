@@ -63,6 +63,7 @@
         @add-item="showAddItemModal = true"
         @toggle-check="toggleCheck"
         @update-note="updateNote"
+        @edit-item="openEditItem"
         @remove-item="removeItem"
       />
     </main>
@@ -82,8 +83,32 @@
       :loading="loadingItem"
       :can-edit="canEdit"
       :categories="categories"
+      :catalog-items="catalogItems"
+      :allowed-catalog-ids="allowedCatalogIds"
+      mode="add"
       @close="showAddItemModal = false"
       @submit="addItem"
+      @toggle-allowed="toggleAllowedCatalog"
+      @create-catalog="createCatalogItem"
+      @rename-catalog="renameCatalogItem"
+      @delete-catalog="deleteCatalogItem"
+    />
+
+    <AddItemModal
+      v-model:item="editItem"
+      :open="showEditItemModal"
+      :loading="loadingItem"
+      :can-edit="canEdit"
+      :categories="categories"
+      :catalog-items="catalogItems"
+      :allowed-catalog-ids="allowedCatalogIds"
+      mode="edit"
+      @close="showEditItemModal = false"
+      @submit="saveItemEdits"
+      @toggle-allowed="toggleAllowedCatalog"
+      @create-catalog="createCatalogItem"
+      @rename-catalog="renameCatalogItem"
+      @delete-catalog="deleteCatalogItem"
     />
 
     <ShareModal
@@ -143,6 +168,7 @@ const {
 
 const {
   trips,
+  catalogItems,
   selectedTripId,
   loadingTrip,
   loadingItem,
@@ -151,13 +177,16 @@ const {
   newTrip,
   editTrip,
   newItem,
+  editItem,
   invite,
   showAddItemModal,
+  showEditItemModal,
   showEditTripModal,
   showShareModal,
   confirmDeleteTripId,
   categories,
   selectedTrip,
+  allowedCatalogIds,
   currentEmail,
   currentRole,
   roleLabel,
@@ -170,10 +199,16 @@ const {
   selectTrip,
   saveTripEdits,
   addItem,
+  openEditItem,
+  saveItemEdits,
   toggleCheck,
   updateNote,
   removeItem,
   inviteMember,
+  toggleAllowedCatalog,
+  createCatalogItem,
+  renameCatalogItem,
+  deleteCatalogItem,
   formatDate,
   openShareForTrip,
   confirmDelete,

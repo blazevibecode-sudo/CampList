@@ -79,6 +79,67 @@ exports.handler = async (event) => {
     const email = decoded.email;
     const uid = decoded.uid;
 
+    if (path === "/api/catalog") {
+      if (httpMethod === "GET") {
+        const catalogSnap = await db
+          .collection("catalogItems")
+          .where("ownerUid", "==", uid)
+          .orderBy("createdAt", "asc")
+          .get();
+        const items = catalogSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        return json(200, { items });
+      }
+
+      if (httpMethod === "POST") {
+        const body = parseBody(event);
+        const name = String(body.name || "").trim();
+        if (!name) {
+          return json(400, { error: "name is required" });
+        }
+        const payload = {
+          name,
+          ownerUid: uid,
+          ownerEmail: email,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        const docRef = await db.collection("catalogItems").add(payload);
+        return json(201, { id: docRef.id });
+      }
+    }
+
+    const catalogMatch = path.match(/^\/api\/catalog\/([^/]+)$/);
+    if (catalogMatch) {
+      const catalogId = catalogMatch[1];
+      const catalogRef = db.collection("catalogItems").doc(catalogId);
+      const catalogSnap = await catalogRef.get();
+      if (!catalogSnap.exists) {
+        return json(404, { error: "Catalog item not found" });
+      }
+      const catalogItem = catalogSnap.data();
+      if (catalogItem.ownerUid !== uid) {
+        return json(403, { error: "Forbidden" });
+      }
+
+      if (httpMethod === "PATCH") {
+        const body = parseBody(event);
+        const name = String(body.name || "").trim();
+        if (!name) {
+          return json(400, { error: "name is required" });
+        }
+        await catalogRef.update({
+          name,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        return json(200, { ok: true });
+      }
+
+      if (httpMethod === "DELETE") {
+        await catalogRef.delete();
+        return json(200, { ok: true });
+      }
+    }
+
     if (httpMethod === "GET" && path === "/api/trips") {
       const tripsRef = db.collection("trips");
       const trips = new Map();
@@ -166,6 +227,9 @@ exports.handler = async (event) => {
       if (!tail) {
         if (httpMethod === "PATCH") {
           const body = parseBody(event);
+          const allowedCatalogIds = Array.isArray(body.allowedCatalogIds)
+            ? body.allowedCatalogIds.filter(Boolean)
+            : null;
           if (role === "owner") {
             await tripRef.update({
               title: body.title !== undefined ? String(body.title).trim() : trip.title,
@@ -173,9 +237,17 @@ exports.handler = async (event) => {
               location:
                 body.location !== undefined ? String(body.location).trim() : trip.location || "",
               note: body.note !== undefined ? String(body.note).trim() : trip.note || "",
+              ...(allowedCatalogIds ? { allowedCatalogIds } : {}),
               updatedAt: FieldValue.serverTimestamp(),
             });
           } else if (role === "editor") {
+            if (allowedCatalogIds) {
+              await tripRef.update({
+                allowedCatalogIds,
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+              return json(200, { ok: true });
+            }
             await tripRef.update({
               note: body.note !== undefined ? String(body.note).trim() : trip.note || "",
               updatedAt: FieldValue.serverTimestamp(),

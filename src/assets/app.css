@@ -344,6 +344,56 @@ button.secondary {
   font-size: 0.9rem;
 }
 
+.hint {
+  font-size: 0.8rem;
+  color: #7b8088;
+  margin: 6px 0 0;
+}
+
+.catalog-panel {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7ee;
+}
+
+.catalog-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.catalog-add input {
+  flex: 1;
+}
+
+.catalog-list {
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.catalog-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.catalog-actions,
+.catalog-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .todo-actions {
   display: flex;
   flex-wrap: wrap;
@@ -622,6 +672,14 @@ button.secondary {
 
 .page.dark .note-text {
   color: rgba(35, 67, 50, 0.8);
+}
+
+.page.dark .catalog-panel {
+  border-top-color: rgba(35, 67, 50, 0.25);
+}
+
+.page.dark .hint {
+  color: rgba(35, 67, 50, 0.7);
 }
 
 .page.dark .trip-avatars .avatar {

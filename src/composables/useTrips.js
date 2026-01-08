@@ -4,6 +4,7 @@ import { createApi } from "../services/api";
 export const useTrips = (user) => {
   const trips = ref([]);
   const items = ref([]);
+  const catalogItems = ref([]);
   const selectedTripId = ref(null);
   const loadingTrip = ref(false);
   const loadingItem = ref(false);
@@ -32,12 +33,22 @@ export const useTrips = (user) => {
     note: "",
   });
 
+  const editItem = ref({
+    id: "",
+    text: "",
+    category: "",
+    qty: 1,
+    unit: "",
+    note: "",
+  });
+
   const invite = ref({
     email: "",
     role: "editor",
   });
 
   const showAddItemModal = ref(false);
+  const showEditItemModal = ref(false);
   const showEditTripModal = ref(false);
   const showShareModal = ref(false);
   const confirmDeleteTripId = ref(null);
@@ -46,6 +57,14 @@ export const useTrips = (user) => {
 
   const selectedTrip = computed(() =>
     trips.value.find((trip) => trip.id === selectedTripId.value)
+  );
+
+  const allowedCatalogIds = computed(
+    () => selectedTrip.value?.allowedCatalogIds || []
+  );
+
+  const allowedCatalogOptions = computed(() =>
+    catalogItems.value.filter((item) => allowedCatalogIds.value.includes(item.id))
   );
 
   const currentEmail = computed(() => user.value?.email || "");
@@ -128,6 +147,19 @@ export const useTrips = (user) => {
     }
   };
 
+  const loadCatalog = async () => {
+    if (!user.value) {
+      catalogItems.value = [];
+      return;
+    }
+    try {
+      const data = await api.getCatalog();
+      catalogItems.value = data.items || [];
+    } catch (error) {
+      dataError.value = error.message || "載入選項失敗";
+    }
+  };
+
   const loadItems = async (tripId) => {
     if (!user.value || !tripId) {
       items.value = [];
@@ -166,6 +198,83 @@ export const useTrips = (user) => {
       dataError.value = error.message || "新增行程失敗";
     } finally {
       loadingTrip.value = false;
+    }
+  };
+
+  const updateAllowedCatalogIds = async (ids) => {
+    if (!selectedTripId.value || !canEdit.value) {
+      return;
+    }
+    try {
+      await api.updateTrip(selectedTripId.value, { allowedCatalogIds: ids });
+      await loadTrips();
+    } catch (error) {
+      dataError.value = error.message || "更新選項失敗";
+    }
+  };
+
+  const toggleAllowedCatalog = async (catalogId, checked) => {
+    const baseIds = allowedCatalogIds.value.length
+      ? allowedCatalogIds.value
+      : catalogItems.value.map((item) => item.id);
+    const next = new Set(baseIds);
+    if (checked) {
+      next.add(catalogId);
+    } else {
+      next.delete(catalogId);
+    }
+    await updateAllowedCatalogIds(Array.from(next));
+  };
+
+  const createCatalogItem = async (name) => {
+    if (!canEdit.value) {
+      return;
+    }
+    const trimmed = String(name || "").trim();
+    if (!trimmed) {
+      return;
+    }
+    try {
+      const result = await api.createCatalog({ name: trimmed });
+      await loadCatalog();
+      if (result?.id) {
+        await toggleAllowedCatalog(result.id, true);
+      }
+    } catch (error) {
+      dataError.value = error.message || "新增選項失敗";
+    }
+  };
+
+  const renameCatalogItem = async (catalogId, name) => {
+    if (!canEdit.value) {
+      return;
+    }
+    const trimmed = String(name || "").trim();
+    if (!trimmed) {
+      return;
+    }
+    try {
+      await api.updateCatalog(catalogId, { name: trimmed });
+      await loadCatalog();
+    } catch (error) {
+      dataError.value = error.message || "更新選項失敗";
+    }
+  };
+
+  const deleteCatalogItem = async (catalogId) => {
+    if (!canEdit.value) {
+      return;
+    }
+    try {
+      await api.deleteCatalog(catalogId);
+      await loadCatalog();
+      if (allowedCatalogIds.value.includes(catalogId)) {
+        await updateAllowedCatalogIds(
+          allowedCatalogIds.value.filter((id) => id !== catalogId)
+        );
+      }
+    } catch (error) {
+      dataError.value = error.message || "刪除選項失敗";
     }
   };
 
@@ -229,6 +338,40 @@ export const useTrips = (user) => {
       dataError.value = error.message || "新增項目失敗";
     } finally {
       loadingItem.value = false;
+    }
+  };
+
+  const openEditItem = (item) => {
+    if (!item) {
+      return;
+    }
+    editItem.value = {
+      id: item.id,
+      text: item.text || "",
+      category: item.category || "",
+      qty: item.qty || 1,
+      unit: item.unit || "",
+      note: item.note || "",
+    };
+    showEditItemModal.value = true;
+  };
+
+  const saveItemEdits = async () => {
+    if (!selectedTripId.value || !canEdit.value || !editItem.value.id) {
+      return;
+    }
+    try {
+      await api.updateItem(selectedTripId.value, editItem.value.id, {
+        text: editItem.value.text.trim(),
+        note: editItem.value.note.trim(),
+        category: editItem.value.category,
+        qty: Number(editItem.value.qty) || 1,
+        unit: editItem.value.unit.trim(),
+      });
+      await loadItems(selectedTripId.value);
+      showEditItemModal.value = false;
+    } catch (error) {
+      dataError.value = error.message || "更新項目失敗";
     }
   };
 
@@ -386,10 +529,12 @@ export const useTrips = (user) => {
     async (currentUser) => {
       if (currentUser) {
         syncStatus.value = "同步中…";
+        await loadCatalog();
         await loadTrips();
       } else {
         trips.value = [];
         items.value = [];
+        catalogItems.value = [];
         selectedTripId.value = null;
         syncStatus.value = "尚未登入";
       }
@@ -400,6 +545,7 @@ export const useTrips = (user) => {
   return {
     trips,
     items,
+    catalogItems,
     selectedTripId,
     loadingTrip,
     loadingItem,
@@ -408,13 +554,17 @@ export const useTrips = (user) => {
     newTrip,
     editTrip,
     newItem,
+    editItem,
     invite,
     showAddItemModal,
+    showEditItemModal,
     showEditTripModal,
     showShareModal,
     confirmDeleteTripId,
     categories,
     selectedTrip,
+    allowedCatalogIds,
+    allowedCatalogOptions,
     currentEmail,
     currentRole,
     roleLabel,
@@ -422,6 +572,7 @@ export const useTrips = (user) => {
     canEdit,
     memberList,
     groupedItems,
+    loadCatalog,
     loadTrips,
     loadItems,
     addTrip,
@@ -429,11 +580,18 @@ export const useTrips = (user) => {
     clearSelection,
     saveTripEdits,
     addItem,
+    openEditItem,
+    saveItemEdits,
     toggleCheck,
     updateNote,
     removeItem,
     removeTrip,
     inviteMember,
+    updateAllowedCatalogIds,
+    toggleAllowedCatalog,
+    createCatalogItem,
+    renameCatalogItem,
+    deleteCatalogItem,
     formatDate,
     openShareForTrip,
     confirmDelete,

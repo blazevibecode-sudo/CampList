@@ -86,6 +86,9 @@
                 />
                 <span>回程</span>
               </label>
+              <button class="ghost" @click="emit('edit-item', item)" :disabled="!canEdit">
+                編輯
+              </button>
               <button class="ghost" @click="emit('remove-item', item)" :disabled="!canEdit">
                 刪除
               </button>
@@ -113,6 +116,7 @@ const emit = defineEmits([
   "add-item",
   "toggle-check",
   "update-note",
+  "edit-item",
   "remove-item",
 ]);
 </script>
